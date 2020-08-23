@@ -1,0 +1,221 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace KnightLOnAChessboard
+{
+    /*
+     * problem statement:
+     * https://www.hackerrank.com/contests/rookierank-2/challenges/knightl-on-chessboard
+     * start time: 9:30am, 2/11/2017
+     * end time: 12:11pm, 2/11/2017 
+     */
+    class Node
+    {
+        public Tuple<int, int> element { get; set; }
+        public int steps { get; set; }
+
+        public Node(Tuple<int, int> node, int value)
+        {
+            element = new Tuple<int, int>(node.Item1, node.Item2);
+            steps = value;
+        }
+    }
+
+    class KnightL
+    {
+        private int nSquaresHorizontal { get; set; }
+        private int mSquaresVertically { get; set; }
+        private int chessBoardSize { get; set; }
+
+        /*
+         * row from 1 to size - 1
+         * col from 1 to size - 1
+         * where size is from 5 to 25
+         */
+        public KnightL(int row, int col, int size)
+        {
+            nSquaresHorizontal = row;
+            mSquaresVertically = col;
+            chessBoardSize = size;
+        }
+
+        /*
+         * @knightL - knightL is defined, from (0,0) to (n-1, n-1) minimum steps
+         * if there is one, return true; 
+         * else return false
+         * 
+         * BoundaryCheck
+         * BFS using queque
+         * HashSet check visitedNodes
+         * 
+         * 8 directions - need to define those 8 directions
+         */
+        public static bool CalculateStepsFromLeftTopToBottomRight(KnightL knightL, ref int minimumFoundSteps)
+        {
+            var visitedNodes = new HashSet<Tuple<int, int>>();
+            bool foundOne = false;
+
+            var queue = new Queue<Node>();
+
+            queue.Enqueue(new Node(new Tuple<int, int>(0, 0), 0));
+
+            while (queue.Count > 0)
+            {
+                var visiting = queue.Dequeue();
+
+                if (IsDestination(visiting.element, knightL.chessBoardSize))
+                {
+                    int currentSteps = visiting.steps;
+                    minimumFoundSteps = (currentSteps < minimumFoundSteps) ? currentSteps : minimumFoundSteps;
+                    foundOne = true;
+                    continue;
+                }
+
+                // do not continue, prune to save time. 
+                if (visiting.steps + 1 > minimumFoundSteps)
+                {
+                    continue;
+                }
+
+                // there are 8 possible next moves in next knightL game, implementing in two steps.
+                // 1. column and row in orginal order, or switch column and row
+                // 2. four directions for each time
+                int[] directionRow = new int[] { 1, 1, -1, -1 };
+                int[] directionCol = new int[] { 1, -1, 1, -1 };
+
+                int visitingRow = visiting.element.Item1;
+                int visitingCol = visiting.element.Item2;
+
+                for (int switchRowAndCol = 0; switchRowAndCol < 2; switchRowAndCol++)
+                {
+                    for (int direction = 0; direction < directionRow.Length; direction++)
+                    {
+                        int incrementRow = knightL.nSquaresHorizontal;
+                        int incrementCol = knightL.mSquaresVertically;
+
+                        if (switchRowAndCol == 1)
+                        {
+                            incrementRow = knightL.mSquaresVertically;
+                            incrementCol = knightL.nSquaresHorizontal;
+                        }
+                        var nextRow = visitingRow + directionRow[direction] * incrementRow;
+                        var nextCol = visitingCol + directionCol[direction] * incrementCol;
+
+                        var nextVisit = new Tuple<int, int>(nextRow, nextCol);
+
+                        if (IsInBoundary(nextRow, nextCol, knightL.chessBoardSize) &&
+                            !visitedNodes.Contains(nextVisit))
+                        {
+                            visitedNodes.Add(nextVisit);
+
+                            queue.Enqueue(new Node(nextVisit, visiting.steps + 1));
+                        }
+                    }
+                }
+            }
+
+            return foundOne;
+        }
+
+        public static bool IsDestination(Tuple<int, int> visiting, int size)
+        {
+            return visiting.Item1 == (size - 1) &&
+                   visiting.Item2 == (size - 1);
+        }
+
+        public static bool IsInBoundary(int row, int col, int size)
+        {
+            return row >= 0 && row < size && col >= 0 && col < size;
+        }
+    }
+
+    public class ChessBoardWithMinimumSteps
+    {
+        private int Size { get; set; } // code review: public -> private
+        public int[][] Step { get; set; }
+
+        public ChessBoardWithMinimumSteps(int value)
+        {
+            Size = value;
+            Step = new int[Size][];
+            for (int i = 0; i < Size; i++)
+            {
+                Step[i] = new int[Size];
+            }
+        }
+
+        /*
+         * Go over each row from 0 to n - 1, 
+         * for each row, go over column from 0 to n - 1
+         *
+         */
+        public void CalculateChessBoardMinimumSteps()
+        {
+            for (int row = 1; row < Size; row++)
+            {
+                for (int col = 1; col < Size; col++)
+                {
+                    KnightL knightL = new KnightL(row, col, Size);
+                    int minimumSteps = Int32.MaxValue;
+                    bool found = KnightL.CalculateStepsFromLeftTopToBottomRight(knightL, ref minimumSteps);
+
+                    Step[row - 1][col - 1] = found ? minimumSteps : (-1);
+                }
+            }
+        }
+    }
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            ProcessInput();
+            //RunSampleTestcase(); 
+        }
+
+        public static void RunSampleTestcase()
+        {
+            ChessBoardWithMinimumSteps myChessBoard = new ChessBoardWithMinimumSteps(5);
+
+            myChessBoard.CalculateChessBoardMinimumSteps();
+
+            int[][] steps = myChessBoard.Step;
+
+            for (int i = 0; i < steps.Length - 1; i++)
+            {
+                StringBuilder concatented = new StringBuilder();
+                for (int j = 0; j < steps[0].Length - 1; j++)
+                {
+                    concatented.Append(steps[i][j] + " ");
+                }
+
+                Console.WriteLine(concatented.ToString());
+            }
+        }
+
+        public static void ProcessInput()
+        {
+            int size = Convert.ToInt32(Console.ReadLine());
+
+            ChessBoardWithMinimumSteps myChessBoard = new ChessBoardWithMinimumSteps(size);
+
+            myChessBoard.CalculateChessBoardMinimumSteps();
+
+            int[][] steps = myChessBoard.Step;
+
+            for (int i = 0; i < steps.Length - 1; i++)
+            {
+                StringBuilder concatented = new StringBuilder();
+                for (int j = 0; j < steps[0].Length - 1; j++)
+                {
+                    concatented.Append(steps[i][j] + " ");
+                }
+
+                Console.WriteLine(concatented.ToString());
+            }
+        }
+    }
+}
